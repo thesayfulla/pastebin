@@ -84,7 +84,7 @@ async fn submit(content: web::Form<FormData>, data: web::Data<AppState>) -> impl
         .finish()
 }
 
-async fn paste(
+async fn share(
     token: web::Path<String>,
     tmpl_env: MiniJinjaRenderer,
     data: web::Data<AppState>,
@@ -112,10 +112,22 @@ async fn paste(
         minijinja::context! {
             content => content.to_string(),
             title => title.to_string(),
+            token => token.to_string(),
         },
     )
 }
 
+async fn view_raw(token: web::Path<String>, data: web::Data<AppState>) -> impl Responder {
+    let conn = data.db.lock().unwrap();
+    let content = conn
+        .query_row(
+            "SELECT content FROM pastes WHERE token = ?",
+            params![token.to_string()],
+            |row| row.get::<_, String>(0),
+        ).unwrap(); // Handle paste not found
+
+    HttpResponse::Ok().body(format!("{}", content))
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -172,7 +184,8 @@ async fn main() -> std::io::Result<()> {
             )
             .service(web::resource("/").route(web::get().to(index)))
             .service(web::resource("/submit").route(web::post().to(submit)))
-            .service(web::resource("/share/{token}").route(web::get().to(paste)))
+            .service(web::resource("/share/{token}").route(web::get().to(share)))
+            .service(web::resource("/share/{token}/raw").route(web::get().to(view_raw)))
             .wrap(ErrorHandlers::new().handler(StatusCode::NOT_FOUND, not_found))
             .wrap(Logger::default())
     })
@@ -198,8 +211,6 @@ fn get_error_response<B>(res: &ServiceResponse<B>, error: &str) -> HttpResponse 
 
     let tmpl_env = MiniJinjaRenderer::extract(req).into_inner().unwrap();
 
-    // Provide a fallback to a simple plain text response in case an error occurs during the
-    // rendering of the error page.
     let fallback = |err: &str| {
         HttpResponse::build(res.status())
             .content_type(header::ContentType::plaintext())
