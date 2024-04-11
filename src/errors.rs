@@ -1,8 +1,8 @@
+use crate::renderer::MiniJinjaRenderer;
 use actix_web::dev::ServiceResponse;
 use actix_web::http::header;
-use actix_web::{FromRequest, HttpResponse, Responder};
 use actix_web::middleware::ErrorHandlerResponse;
-use crate::renderer::MiniJinjaRenderer;
+use actix_web::{FromRequest, HttpResponse, Responder};
 
 pub fn not_found<B>(svc_res: ServiceResponse<B>) -> actix_web::Result<ErrorHandlerResponse<B>> {
     let res = get_error_response(&svc_res, "Page not found");

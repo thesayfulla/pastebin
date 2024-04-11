@@ -1,10 +1,16 @@
-use actix_web::{HttpResponse, Responder, web};
-use actix_web::http::header;
-use rand::distributions::Alphanumeric;
-use rand::{Rng, thread_rng};
-use rusqlite::params;
-use crate::{AppState, FormData};
 use crate::renderer::*;
+use crate::AppState;
+use actix_web::http::header;
+use actix_web::{web, HttpResponse, Responder};
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
+use rusqlite::params;
+
+#[derive(serde::Deserialize)]
+pub struct FormData {
+    title: String,
+    content: String,
+}
 
 pub async fn index(tmpl_env: MiniJinjaRenderer) -> actix_web::Result<impl Responder> {
     tmpl_env.render("index.html", ())
@@ -22,13 +28,12 @@ pub async fn submit(content: web::Form<FormData>, data: web::Data<AppState>) -> 
         "INSERT INTO pastes (token, title, content) VALUES (?, ?, ?)",
         params![&token, &content.title, &content.content],
     )
-        .expect("Failed to insert into db");
+    .expect("Failed to insert into db");
 
     HttpResponse::SeeOther()
         .insert_header((header::LOCATION, format!("/share/{}", token)))
         .finish()
 }
-
 
 pub async fn share(
     token: web::Path<String>,
@@ -46,7 +51,8 @@ pub async fn share(
                 let title: String = row.get(1)?;
                 Ok((content, title))
             },
-        ).unwrap();
+        )
+        .unwrap();
 
     let (content, title) = paste;
 
@@ -67,7 +73,8 @@ pub async fn view_raw(token: web::Path<String>, data: web::Data<AppState>) -> im
             "SELECT content FROM pastes WHERE token = ?",
             params![token.to_string()],
             |row| row.get::<_, String>(0),
-        ).unwrap();
+        )
+        .unwrap();
 
     HttpResponse::Ok().body(format!("{}", content))
 }

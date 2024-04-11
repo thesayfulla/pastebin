@@ -1,27 +1,22 @@
+use crate::errors::not_found;
+use crate::routes::configure_routes;
+use actix_web::http::StatusCode;
+use actix_web::middleware::{ErrorHandlers, Logger};
+use actix_web::{web, App, HttpServer};
+use minijinja::path_loader;
+use minijinja_autoreload::AutoReloader;
+use rusqlite::{params, Connection};
 use std::env;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use actix_web::{App, HttpServer, web};
-use actix_web::http::StatusCode;
-use actix_web::middleware::{ErrorHandlers, Logger};
-use minijinja::path_loader;
-use minijinja_autoreload::AutoReloader;
-use rusqlite::{Connection, params};
-use crate::routes::configure_routes;
-use crate::errors::not_found;
 
-mod routes;
+mod errors;
 mod handlers;
 mod renderer;
-mod errors;
+mod routes;
 
 struct AppState {
     db: Mutex<Connection>,
-}
-#[derive(serde::Deserialize)]
-struct FormData {
-    title: String,
-    content: String,
 }
 
 #[actix_web::main]

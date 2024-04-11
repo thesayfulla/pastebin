@@ -1,5 +1,5 @@
-use actix_utils::future::{Ready, ready};
-use actix_web::{dev, error, FromRequest, HttpRequest, web};
+use actix_utils::future::{ready, Ready};
+use actix_web::{dev, error, web, FromRequest, HttpRequest};
 use actix_web_lab::respond::Html;
 use minijinja_autoreload::AutoReloader;
 
