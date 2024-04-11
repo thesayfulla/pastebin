@@ -1,0 +1,35 @@
+{% extends "base.html" %} {% block content%}
+<div class="p-5">
+    <form class="container" action="/submit" method="post">
+        <div class="form-group">
+            <label for="title" class="col-sm-2 col-form-label">Title</label>
+            <div class="col-sm-12">
+                <input
+                    type="text"
+                    class="form-control"
+                    id="title"
+                    placeholder="Enter your title"
+                    name="title"
+                    required
+                />
+            </div>
+        </div>
+        <div class="form-group mt-2">
+            <label for="content" class="col-sm-2 col-form-label">Content</label>
+            <div class="col-sm-12">
+                <textarea
+                    class="form-control"
+                    id="content"
+                    rows="20"
+                    placeholder="Paste your content"
+                    name="content"
+                    required
+                ></textarea>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block mt-4">
+            Create
+        </button>
+    </form>
+</div>
+{% endblock %}
