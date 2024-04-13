@@ -51,19 +51,27 @@ pub async fn share(
                 let title: String = row.get(1)?;
                 Ok((content, title))
             },
-        )
-        .unwrap();
+        );
 
-    let (content, title) = paste;
-
-    tmpl_env.render(
-        "paste.html",
-        minijinja::context! {
-            content => content.to_string(),
-            title => title.to_string(),
-            token => token.to_string(),
+    match paste {
+        Ok(paste) => {
+            let (content, title) = paste;
+            tmpl_env.render(
+                "paste.html",
+                minijinja::context! {
+                    content => content.to_string(),
+                    title => title.to_string(),
+                    token => token.to_string(),
+                },
+            )
         },
-    )
+        Err(_) => {
+            tmpl_env.render("error.html", minijinja::context! {
+                status_code => "404",
+                error => "Not found",
+            })
+        }
+    }    
 }
 
 pub async fn view_raw(token: web::Path<String>, data: web::Data<AppState>) -> impl Responder {
@@ -73,8 +81,10 @@ pub async fn view_raw(token: web::Path<String>, data: web::Data<AppState>) -> im
             "SELECT content FROM pastes WHERE token = ?",
             params![token.to_string()],
             |row| row.get::<_, String>(0),
-        )
-        .unwrap();
+        );
 
-    HttpResponse::Ok().body(format!("{}", content))
+    match content {
+        Ok(content) => HttpResponse::Ok().body(format!("{}", content)),
+        Err(_) => HttpResponse::Ok().body(format!("{}", "404 not found")),
+    }
 }
