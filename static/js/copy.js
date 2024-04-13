@@ -8,3 +8,13 @@ function copyCode() {
   window.getSelection().removeAllRanges();
   alert('Code copied to clipboard!');
 }
+
+function copyURL() {
+  var tempInput = document.createElement("input");
+  tempInput.value = window.location.href;
+  document.body.appendChild(tempInput);
+  tempInput.select();
+  document.execCommand("copy");
+  document.body.removeChild(tempInput);
+  console.log('URL copied to clipboard');
+}
