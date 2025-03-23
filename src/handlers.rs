@@ -4,12 +4,11 @@ use actix_web::http::header;
 use actix_web::{web, HttpResponse, Responder};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
-use rusqlite::params;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
-    title: String,
-    content: String,
+    pub title: String,
+    pub content: String,
 }
 
 pub async fn index(tmpl_env: MiniJinjaRenderer) -> actix_web::Result<impl Responder> {
@@ -23,16 +22,12 @@ pub async fn submit(content: web::Form<FormData>, data: web::Data<AppState>) -> 
         .map(char::from)
         .collect();
 
-    let conn = data.db.lock().unwrap();
-    conn.execute(
-        "INSERT INTO pastes (token, title, content) VALUES (?, ?, ?)",
-        params![&token, &content.title, &content.content],
-    )
-    .expect("Failed to insert into db");
-
-    HttpResponse::SeeOther()
-        .insert_header((header::LOCATION, format!("/share/{}", token)))
-        .finish()
+    match data.db.insert_paste(&token, &content.title, &content.content) {
+        Ok(_) => HttpResponse::SeeOther()
+            .insert_header((header::LOCATION, format!("/share/{}", token)))
+            .finish(),
+        Err(_) => HttpResponse::InternalServerError().body("Failed to save paste"),
+    }
 }
 
 pub async fn share(
@@ -40,27 +35,15 @@ pub async fn share(
     tmpl_env: MiniJinjaRenderer,
     data: web::Data<AppState>,
 ) -> actix_web::Result<impl Responder> {
-    let conn = data.db.lock().unwrap();
-
-    let paste = conn
-        .query_row(
-            "SELECT content, title FROM pastes WHERE token = ?",
-            params![token.to_string()],
-            |row| {
-                let content: String = row.get(0)?;
-                let title: String = row.get(1)?;
-                Ok((content, title))
-            },
-        );
+    let paste = data.db.get_paste_by_token(&token);
 
     match paste {
-        Ok(paste) => {
-            let (content, title) = paste;
+        Ok((content, title)) => {
             tmpl_env.render(
                 "paste.html",
                 minijinja::context! {
-                    content => content.to_string(),
-                    title => title.to_string(),
+                    content => content,
+                    title => title,
                     token => token.to_string(),
                 },
             )
@@ -75,16 +58,10 @@ pub async fn share(
 }
 
 pub async fn view_raw(token: web::Path<String>, data: web::Data<AppState>) -> impl Responder {
-    let conn = data.db.lock().unwrap();
-    let content = conn
-        .query_row(
-            "SELECT content FROM pastes WHERE token = ?",
-            params![token.to_string()],
-            |row| row.get::<_, String>(0),
-        );
+    let content = data.db.get_content_by_token(&token);
 
     match content {
-        Ok(content) => HttpResponse::Ok().body(format!("{}", content)),
-        Err(_) => HttpResponse::Ok().body(format!("{}", "404 not found")),
+        Ok(content) => HttpResponse::Ok().body(content),
+        Err(_) => HttpResponse::NotFound().body("404 not found"),
     }
 }

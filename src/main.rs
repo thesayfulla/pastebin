@@ -5,18 +5,19 @@ use actix_web::middleware::{ErrorHandlers, Logger};
 use actix_web::{web, App, HttpServer};
 use minijinja::path_loader;
 use minijinja_autoreload::AutoReloader;
-use rusqlite::{params, Connection};
 use std::env;
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 mod errors;
 mod handlers;
 mod renderer;
 mod routes;
+mod db;
 
-struct AppState {
-    db: Mutex<Connection>,
+use db::Database;
+
+pub struct AppState {
+    pub db: Database,
 }
 
 #[actix_web::main]
@@ -48,14 +49,9 @@ async fn main() -> std::io::Result<()> {
 
     let tmpl_reloader = web::Data::new(tmpl_reloader);
 
-    let db = Connection::open("pastes.db").expect("Failed to open db");
-    db.execute(
-        "CREATE TABLE IF NOT EXISTS pastes (token TEXT PRIMARY KEY, title VARCHAR, content TEXT)",
-        params![],
-    )
-    .expect("Failed to create table");
-
-    let app_state = web::Data::new(AppState { db: Mutex::new(db) });
+    // Initialize database using the new Database struct
+    let db = Database::new("pastes.db").expect("Failed to initialize database");
+    let app_state = web::Data::new(AppState { db });
 
     log::info!("starting HTTP server at http://localhost:8080");
 
